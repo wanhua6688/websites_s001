@@ -1,0 +1,293 @@
+---
+import Image from '~/components/common/Image.astro';
+import Button from '~/components/ui/Button.astro';
+
+import type { Hero as Props } from '~/types';
+
+const {
+  enableUpload = false,
+  title = await Astro.slots.render('title'),
+  subtitle = await Astro.slots.render('subtitle'),
+  tagline,
+
+  content = await Astro.slots.render('content'),
+  actions = await Astro.slots.render('actions'),
+  image = await Astro.slots.render('image'),
+
+  id,
+  bg = await Astro.slots.render('bg'),
+} = Astro.props;
+---
+
+<section class="relative md:-mt-[76px] not-prose" {...id ? { id } : {}}>
+  <div class="absolute inset-0 pointer-events-none" aria-hidden="true">
+    <slot name="bg">
+      {bg ? <Fragment set:html={bg} /> : null}
+    </slot>
+  </div>
+  <div class="relative max-w-7xl mx-auto px-4 sm:px-6">
+    <div class="pt-0 md:pt-[76px] pointer-events-none"></div>
+    <div class="py-12 md:py-20">
+      <div class="text-center pb-10 md:pb-16 max-w-5xl mx-auto">
+        {
+          tagline && (
+            <p
+              class="text-base text-secondary dark:text-blue-200 font-bold tracking-wide uppercase intersect-once intersect-quarter motion-safe:md:opacity-0 motion-safe:md:intersect:animate-fade"
+              set:html={tagline}
+            />
+          )
+        }
+        {
+          title && (
+            <h1
+              class="text-5xl md:text-6xl font-bold leading-tighter tracking-tighter mb-4 font-heading dark:text-gray-200 intersect-once intersect-quarter motion-safe:md:opacity-0 motion-safe:md:intersect:animate-fade"
+              set:html={title}
+            />
+          )
+        }
+        <div class="max-w-3xl mx-auto">
+          {
+            subtitle && (
+              <p
+                class="text-xl text-muted mb-6 dark:text-slate-300 intersect-once intersect-quarter motion-safe:md:opacity-0 motion-safe:md:intersect:animate-fade"
+                set:html={subtitle}
+              />
+            )
+          }
+          {
+            actions && (
+              <div class="max-w-xs sm:max-w-md m-auto flex flex-nowrap flex-col sm:flex-row sm:justify-center gap-4 intersect-once intersect-quarter motion-safe:md:opacity-0 motion-safe:md:intersect:animate-fade">
+                {Array.isArray(actions) ? (
+                  actions.map((action) => (
+                    <div class="flex w-full sm:w-auto">
+                      <Button {...(action || {})} class="w-full sm:mb-0" />
+                    </div>
+                  ))
+                ) : (
+                  <Fragment set:html={actions} />
+                )}
+              </div>
+            )
+          }
+        </div>
+        {content && <Fragment set:html={content} />}
+      </div>
+
+      <div
+        class="intersect-once intersect-no-queue intersect-quarter motion-safe:md:opacity-0 motion-safe:md:intersect:animate-fade"
+      >
+        {
+          image && (
+            <div 
+              class={["relative m-auto max-w-5xl", enableUpload ? "drag-upload-area" : ""].filter(Boolean).join(" ")}
+              {...(enableUpload ? { id: "dropZone" } : {})}
+            >
+              {typeof image === 'string' ? (
+                <Fragment set:html={image} />
+              ) : (
+                <Image
+                  class="mx-auto rounded-md w-full"
+                  widths={[400, 768, 1024, 2040]}
+                  sizes="(max-width: 767px) 400px, (max-width: 1023px) 768px, (max-width: 2039px) 1024px, 2040px"
+                  loading="eager"
+                  width={1024}
+                  height={576}
+                  {...image}
+                />
+              )}
+            </div>
+          )
+        }
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .drag-upload-area {
+    position: relative;
+    transition: all 0.3s ease;
+  }
+  
+  .drag-upload-area.dragover {
+    border: 2px dashed #666;
+    background-color: rgba(0,0,0,0.05);
+    border-radius: 8px;
+  }
+</style>
+
+{enableUpload && (
+  <script type="module">
+    const RSA_PUBLIC_KEY = `
+-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAllB8W1OYahcNC0rKXYFq
+7AzlNoXaIiRWp01TZwjKlLensDl4zcu6F2885qfujZJeJlBUoGZW+H51Hsh0TNAa
+lnNjP/eAKTcWnezD/KvJfSAEObvxxMiGHzCDdu/pdOKnOf1Lw1AlGrTstVfQUnab
+v7re1tTtSZrV/g6CD6badrLGSy8Acglc7cmtXwZEbG9dKOZtBl4i5i+h7c4XR3ml
+IAK1zowcZM/UcDYZ53SIUHsm7vn9C0tONY9iMmbi4WBjKg+6lf6PidsXxzOQdrcM
+LryBTcBmJYVCXZ4Jg3TIMjwn2+DCMonFslCuRU4BWlZQHJhSILyG08Mq61uSroG8
+QQIDAQAB
+-----END PUBLIC KEY-----`;
+
+    const dropZone = document.getElementById('dropZone');
+
+    if (dropZone) {
+      const preventDefault = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      };
+
+      const handleDragEnterOver = (e) => {
+        preventDefault(e);
+        dropZone.classList.add('dragover');
+      };
+
+      const handleDragLeave = (e) => {
+        preventDefault(e);
+        if (e.relatedTarget && !dropZone.contains(e.relatedTarget)) {
+          dropZone.classList.remove('dragover');
+        }
+      };
+
+      const handleDrop = async (e) => {
+        preventDefault(e);
+        dropZone.classList.remove('dragover');
+        
+        const files = e.dataTransfer?.files;
+        if (files?.length) {
+          dropZone.style.opacity = '0.6';
+          try {
+            await handleFiles(files);
+          } finally {
+            dropZone.style.opacity = '1';
+          }
+        }
+      };
+
+      dropZone.addEventListener('dragenter', handleDragEnterOver);
+      dropZone.addEventListener('dragover', handleDragEnterOver);
+      dropZone.addEventListener('dragleave', handleDragLeave);
+      dropZone.addEventListener('drop', handleDrop);
+    }
+
+    async function importPublicKey(pem) {
+      const pemContents = pem
+        .replace(/-{5}BEGIN PUBLIC KEY-{5}/, "")
+        .replace(/-{5}END PUBLIC KEY-{5}/, "")
+        .replace(/\s+/g, "");
+      const binaryDer = Uint8Array.from(atob(pemContents), (c) =>
+        c.charCodeAt(0)
+      );
+
+      return crypto.subtle.importKey(
+        "spki",
+        binaryDer,
+        {
+          name: "RSA-OAEP",
+          hash: { name: "SHA-256" },
+        },
+        true,
+        ["encrypt"]
+      );
+    }
+
+    async function uploadFileToServer(file) {
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("category", "");
+        formData.append("storage_type", "telegram");
+        
+        const response = await fetch("https://aitc.aix5y2z7.workers.dev/upload", {
+          method: "POST",
+          body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.status === 1) {
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500);
+          return true;
+        }
+        return false;
+      } catch {
+        return false;
+      }
+    }
+
+    async function encryptFile(file) {
+      try {
+        const fileData = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(new Uint8Array(reader.result));
+          reader.onerror = reject;
+          reader.readAsArrayBuffer(file);
+        });
+
+        const publicKey = await importPublicKey(RSA_PUBLIC_KEY);
+
+        const aesKey = crypto.getRandomValues(new Uint8Array(32));
+        const nonce = crypto.getRandomValues(new Uint8Array(16));
+
+        const encryptedAesKey = await crypto.subtle.encrypt(
+          { name: "RSA-OAEP" },
+          publicKey,
+          aesKey
+        );
+
+        const aesKeyObj = await crypto.subtle.importKey(
+          "raw",
+          aesKey,
+          { name: "AES-CTR" },
+          false,
+          ["encrypt"]
+        );
+
+        const ciphertext = await crypto.subtle.encrypt(
+          {
+            name: "AES-CTR",
+            counter: nonce,
+            length: 64,
+          },
+          aesKeyObj,
+          fileData
+        );
+
+        const magic = new Uint8Array([0x11, 0x45, 0x14]);
+        const padding = new Uint8Array([0x07, 0x21]);
+        const finalFile = new Uint8Array([
+          ...magic,
+          ...new Uint8Array(encryptedAesKey),
+          ...nonce,
+          ...padding,
+          ...new Uint8Array(ciphertext),
+        ]);
+
+        return new File([finalFile], `${file.name}.zc3`, {
+          type: "application/octet-stream",
+        });
+      } catch {
+        return null;
+      }
+    }
+
+    async function handleFiles(files) {
+      for (const file of files) {
+        try {
+          if (file.size > 100 * 1024 * 1024) {
+            continue;
+          }
+
+          const encryptedFile = await encryptFile(file);
+          if (encryptedFile) {
+            await uploadFileToServer(encryptedFile);
+          }
+        } catch {
+          // 忽略错误
+        }
+      }
+    }
+  </script>
+)}
